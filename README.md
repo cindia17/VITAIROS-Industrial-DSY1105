@@ -56,6 +56,17 @@ Aplicación Android nativa desarrollada en **Kotlin + Jetpack Compose** para la 
 
 > Los permisos de cámara y ubicación se solicitan la primera vez que se usan.
 
+## Correcciones y mejoras recientes
+
+### v1.2 — Adjuntos múltiples (19/10/2026)
+- **Arreglado:** El formulario "Nuevo Reporte" ahora permite adjuntar **hasta 5 archivos** por reporte (antes solo permitía 1)
+- **Arreglado:** Se pueden mezclar fotos de cámara, imágenes de galería y PDFs en el mismo reporte
+- **Agregado:** Validación de **10 MB máximo por archivo** — si se supera, la app informa el tamaño exacto antes de continuar
+- **Agregado:** Contador en tiempo real "X/5 adjuntos" visible durante la creación del reporte
+- **Agregado:** Botón ✕ para eliminar archivos individuales de la lista antes de guardar
+- **Mejorado:** Pantalla de Detalle muestra todos los adjuntos con vista previa de imágenes
+- **Mejorado:** Lista de reportes muestra la cantidad de adjuntos por reporte
+
 ## Arquitectura
 
 ```
