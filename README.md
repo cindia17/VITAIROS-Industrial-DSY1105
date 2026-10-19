@@ -4,8 +4,8 @@
 **Institución:** Duoc UC  
 **Evaluación:** Parcial 2 — Encargo en parejas  
 **Integrantes:**
-- [Nombre y apellido estudiante 1]
-- [Nombre y apellido estudiante 2]
+- Cindia Maldonado
+- Héctor Eduardo Contreras
 
 **N° de equipo:** [Completar]  
 **Docente:** [Completar]
