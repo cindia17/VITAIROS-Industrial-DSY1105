@@ -136,6 +136,25 @@ fun PantallaSincronizacion(
 
                             pendientes.forEachIndexed { index, reporte ->
 
+                                // Deduplicación: si ya existe un reporte sincronizado con el mismo identificadorDocumento, omitir reenvío
+                                val yaExiste = withContext(Dispatchers.IO) {
+                                    baseDatos.reporteDao().contarDuplicadoSincronizado(
+                                        reporte.identificadorDocumento, reporte.id
+                                    ) > 0
+                                }
+
+                                if (yaExiste) {
+                                    withContext(Dispatchers.IO) {
+                                        baseDatos.reporteDao().actualizarReporte(
+                                            reporte.copy(estado = "SINCRONIZADO")
+                                        )
+                                    }
+                                    exitosos++
+                                    progreso = (index + 1f) / pendientes.size
+                                    intentoActual = "Duplicado omitido — ${reporte.identificadorDocumento} ya sincronizado"
+                                    return@forEachIndexed
+                                }
+
                                 withContext(Dispatchers.IO) {
                                     baseDatos.reporteDao().actualizarReporte(
                                         reporte.copy(estado = "ENVIANDO")

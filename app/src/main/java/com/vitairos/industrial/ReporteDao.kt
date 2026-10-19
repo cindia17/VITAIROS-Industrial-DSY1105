@@ -33,6 +33,10 @@ interface ReporteDao {
     @Query("SELECT * FROM reportes WHERE estado IN ('PENDIENTE','EN_COLA','BORRADOR')")
     suspend fun obtenerPendientes(): List<Reporte>
 
+    // Verificar si ya existe un reporte sincronizado con el mismo identificador (deduplicación)
+    @Query("SELECT COUNT(*) FROM reportes WHERE identificadorDocumento = :idDoc AND estado IN ('SINCRONIZADO','APROBADO') AND id != :idPropio")
+    suspend fun contarDuplicadoSincronizado(idDoc: String, idPropio: Int): Int
+
     // Eliminar un reporte
     @Delete
     suspend fun eliminarReporte(reporte: Reporte)
