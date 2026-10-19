@@ -1461,9 +1461,15 @@ fun PantallaEditarReporte(
                                 else -> reporte.estado
                             }
 
+                            val nuevaVersion = if (reporte.estado in listOf("RECHAZADO", "REQUIERE_CORRECCIÓN")) {
+                                val num = reporte.version.removePrefix("v").toIntOrNull() ?: 1
+                                "v${num + 1}"
+                            } else reporte.version
+
                             val actualizado = reporte.copy(
                                 identificadorDocumento = identificador.trim(),
                                 tipoReporte = tipoReporte.trim(),
+                                version = nuevaVersion,
                                 proceso = proceso.trim(),
                                 area = area.trim(),
                                 equipo = equipo.trim(),
