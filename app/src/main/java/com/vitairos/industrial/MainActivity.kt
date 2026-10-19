@@ -615,9 +615,18 @@ fun PantallaNuevoReporte(
     var severidad by rememberSaveable { mutableStateOf("") }
     var ubicacion by rememberSaveable { mutableStateOf("") }
     var observaciones by rememberSaveable { mutableStateOf("") }
-    var archivoUri by rememberSaveable { mutableStateOf("") }
-    var nombreArchivo by rememberSaveable { mutableStateOf("") }
-    var fotografia by remember { mutableStateOf<Bitmap?>(null) }
+    // adjuntosUri: "uri1::Imagen|uri2::PDF" (saveable)
+    var adjuntosUri by rememberSaveable { mutableStateOf("") }
+    // adjuntosBitmaps: fotos tomadas con cámara (no saveable, se pierden al rotar)
+    val adjuntosBitmaps = remember { mutableStateListOf<Bitmap>() }
+    val adjuntosUriList: List<Pair<String, String>>
+        get() = if (adjuntosUri.isBlank()) emptyList()
+                else adjuntosUri.split("|").map {
+                    val p = it.split("::", limit = 2)
+                    Pair(p[0], if (p.size > 1) p[1] else "Archivo")
+                }
+    val totalAdjuntos get() = adjuntosBitmaps.size + adjuntosUriList.size
+    val puedaAgregar get() = totalAdjuntos < 5
     var mensaje by rememberSaveable { mutableStateOf("") }
     var guardando by remember { mutableStateOf(false) }
 
@@ -633,11 +642,11 @@ fun PantallaNuevoReporte(
     val abrirCamara = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview()
     ) { foto: Bitmap? ->
-        if (foto != null) {
-            fotografia = foto
-            archivoUri = ""
-            nombreArchivo = "Fotografía capturada"
+        if (foto != null && puedaAgregar) {
+            adjuntosBitmaps.add(foto)
             mensaje = ""
+        } else if (foto != null) {
+            mensaje = "Máximo 5 adjuntos por reporte"
         } else {
             mensaje = "No se capturó ninguna fotografía"
         }
@@ -657,10 +666,16 @@ fun PantallaNuevoReporte(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null) {
-            archivoUri = uri.toString()
-            fotografia = null
-            nombreArchivo = "Imagen seleccionada"
-            mensaje = ""
+            val mb = obtenerTamanoMb(contexto, uri)
+            when {
+                mb > 10 -> mensaje = "La imagen supera el límite de 10 MB (${mb} MB)"
+                !puedaAgregar -> mensaje = "Máximo 5 adjuntos por reporte"
+                else -> {
+                    val sep = if (adjuntosUri.isBlank()) "" else "|"
+                    adjuntosUri += "${sep}${uri}::Imagen"
+                    mensaje = ""
+                }
+            }
         }
     }
 
@@ -668,10 +683,16 @@ fun PantallaNuevoReporte(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null) {
-            archivoUri = uri.toString()
-            fotografia = null
-            nombreArchivo = "PDF seleccionado"
-            mensaje = ""
+            val mb = obtenerTamanoMb(contexto, uri)
+            when {
+                mb > 10 -> mensaje = "El PDF supera el límite de 10 MB (${mb} MB)"
+                !puedaAgregar -> mensaje = "Máximo 5 adjuntos por reporte"
+                else -> {
+                    val sep = if (adjuntosUri.isBlank()) "" else "|"
+                    adjuntosUri += "${sep}${uri}::PDF"
+                    mensaje = ""
+                }
+            }
         }
     }
 
@@ -781,65 +802,76 @@ fun PantallaNuevoReporte(
         )
 
         Spacer(Modifier.height(25.dp))
-        Titulo("DOCUMENTO O EVIDENCIA")
+        Titulo("DOCUMENTO O EVIDENCIA  ($totalAdjuntos/5)")
+        Spacer(Modifier.height(8.dp))
+        TextoSecundario("Podés agregar hasta 5 archivos (fotos, imágenes o PDFs)")
         Spacer(Modifier.height(15.dp))
 
-        BotonVerde("TOMAR FOTOGRAFÍA") {
-            val tienePermiso = ContextCompat.checkSelfPermission(
-                contexto, Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED
-            if (tienePermiso) {
-                abrirCamara.launch(null)
-            } else {
-                solicitarPermisoCamara.launch(Manifest.permission.CAMERA)
+        if (puedaAgregar) {
+            BotonVerde("TOMAR FOTOGRAFÍA") {
+                val tienePermiso = ContextCompat.checkSelfPermission(
+                    contexto, Manifest.permission.CAMERA
+                ) == PackageManager.PERMISSION_GRANTED
+                if (tienePermiso) {
+                    abrirCamara.launch(null)
+                } else {
+                    solicitarPermisoCamara.launch(Manifest.permission.CAMERA)
+                }
             }
+            Spacer(Modifier.height(12.dp))
+            BotonVerde("SELECCIONAR IMAGEN") { seleccionarImagen.launch("image/*") }
+            Spacer(Modifier.height(12.dp))
+            BotonVerde("SELECCIONAR PDF") { seleccionarPdf.launch("application/pdf") }
+        } else {
+            TextoSecundario("Límite de 5 adjuntos alcanzado")
         }
-        Spacer(Modifier.height(12.dp))
-        BotonVerde("SELECCIONAR IMAGEN") { seleccionarImagen.launch("image/*") }
-        Spacer(Modifier.height(12.dp))
-        BotonVerde("SELECCIONAR PDF") { seleccionarPdf.launch("application/pdf") }
 
         Spacer(Modifier.height(20.dp))
 
-        if (fotografia != null) {
-
-            Titulo("VISTA PREVIA")
-            Spacer(Modifier.height(12.dp))
-
-            Image(
-                bitmap = fotografia!!.asImageBitmap(),
-                contentDescription = "Fotografía capturada",
-                modifier = Modifier.fillMaxWidth().height(230.dp),
-                contentScale = ContentScale.Fit
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            BotonVerde("REPETIR FOTOGRAFÍA") { abrirCamara.launch(null) }
-
-        } else if (archivoUri.isNotEmpty()) {
-
-            TextoSecundario(nombreArchivo)
-
-            if (nombreArchivo == "Imagen seleccionada") {
-                val imagen = cargarImagenSeleccionada(archivoUri)
-                if (imagen != null) {
-                    Spacer(Modifier.height(12.dp))
-                    Image(
-                        bitmap = imagen.asImageBitmap(),
-                        contentDescription = "Imagen seleccionada",
-                        modifier = Modifier.fillMaxWidth().height(230.dp),
-                        contentScale = ContentScale.Fit
-                    )
+        // Fotos de cámara
+        adjuntosBitmaps.forEachIndexed { i, bmp ->
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Image(
+                    bitmap = bmp.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    contentScale = ContentScale.Crop
+                )
+                Spacer(Modifier.width(12.dp))
+                Text("Foto ${i + 1}", color = Hueso, modifier = Modifier.weight(1f))
+                IconButton(onClick = { adjuntosBitmaps.removeAt(i) }) {
+                    Text("✕", color = Cobre, fontWeight = FontWeight.Bold)
                 }
             }
+        }
 
-            if (nombreArchivo == "PDF seleccionado") {
-                Spacer(Modifier.height(10.dp))
-                TextoSecundario("PDF seleccionado para guardar")
+        // Archivos desde galería / PDF
+        adjuntosUriList.forEachIndexed { i, (uri, label) ->
+            Row(
+                modifier = Modifier.fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .background(Color(0xFF102B23), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(if (label == "PDF") "📄" else "🖼️", fontSize = 22.sp)
+                Spacer(Modifier.width(10.dp))
+                Text(label, color = Hueso, modifier = Modifier.weight(1f), fontSize = 14.sp)
+                IconButton(onClick = {
+                    val lista = adjuntosUri.split("|").toMutableList()
+                    lista.removeAt(i)
+                    adjuntosUri = lista.joinToString("|")
+                }) {
+                    Text("✕", color = Cobre, fontWeight = FontWeight.Bold)
+                }
             }
+            Spacer(Modifier.height(4.dp))
+        }
 
-        } else {
+        if (totalAdjuntos == 0) {
             TextoSecundario("No se ha seleccionado ningún archivo")
         }
 
@@ -866,8 +898,8 @@ fun PantallaNuevoReporte(
                     faltaSeveridad ->
                         mensaje = "Seleccione la severidad del incidente"
 
-                    fotografia == null && archivoUri.isBlank() ->
-                        mensaje = "Debe adjuntar una fotografía, imagen o PDF"
+                    totalAdjuntos == 0 ->
+                        mensaje = "Debe adjuntar al menos una fotografía, imagen o PDF"
 
                     !guardando -> {
                         guardando = true
@@ -882,22 +914,29 @@ fun PantallaNuevoReporte(
                         val sev = severidad.trim()
                         val ubic = ubicacion.trim()
                         val obs = observaciones.trim()
-                        val uriActual = archivoUri
-                        val fotoActual = fotografia
-                        val nombreActual = nombreArchivo
+                        val bitmapsActuales = adjuntosBitmaps.toList()
+                        val uriListActual = adjuntosUriList.toList()
 
                         alcance.launch {
 
-                            var archivoCopiado: File? = null
+                            val archivosGuardados = mutableListOf<File>()
 
                             try {
                                 withContext(Dispatchers.IO) {
 
-                                    val archivo = guardarArchivoLocal(
-                                        contexto, fotoActual, uriActual, nombreActual
-                                    )
+                                    for (bmp in bitmapsActuales) {
+                                        archivosGuardados.add(
+                                            guardarArchivoLocal(contexto, bmp, "", "Foto")
+                                        )
+                                    }
+                                    for ((uri, label) in uriListActual) {
+                                        archivosGuardados.add(
+                                            guardarArchivoLocal(contexto, null, uri, label)
+                                        )
+                                    }
 
-                                    archivoCopiado = archivo
+                                    val rutasUnidas = archivosGuardados
+                                        .joinToString("|") { it.absolutePath }
 
                                     val reporte = Reporte(
                                         identificadorDocumento = idDocumento,
@@ -907,7 +946,7 @@ fun PantallaNuevoReporte(
                                         fechaHora = fechaHora,
                                         usuario = "OPERADOR",
                                         observaciones = obs,
-                                        archivoLocal = archivo.absolutePath,
+                                        archivoLocal = rutasUnidas,
                                         estado = "EN_COLA",
                                         observacionSupervisor = "",
                                         area = areaTrim,
@@ -932,12 +971,13 @@ fun PantallaNuevoReporte(
                                 severidad = ""
                                 ubicacion = ""
                                 observaciones = ""
-                                archivoUri = ""
-                                nombreArchivo = ""
-                                fotografia = null
+                                adjuntosUri = ""
+                                adjuntosBitmaps.clear()
 
                             } catch (e: Exception) {
-                                withContext(Dispatchers.IO) { archivoCopiado?.delete() }
+                                withContext(Dispatchers.IO) {
+                                    archivosGuardados.forEach { it.delete() }
+                                }
                                 mensaje = "No se pudo guardar: " +
                                         (e.localizedMessage ?: "Error desconocido")
                             } finally {
@@ -1350,43 +1390,39 @@ fun PantallaEditarReporte(
 
             Spacer(Modifier.height(25.dp))
 
-            Titulo("ARCHIVO ADJUNTO")
+            val rutasAdjuntos = reporte.archivoLocal.split("|").filter { it.isNotBlank() }
+            Titulo("ARCHIVOS ADJUNTOS (${rutasAdjuntos.size})")
             Spacer(Modifier.height(10.dp))
 
-            TextoSecundario(
-                File(reporte.archivoLocal).name
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            val esPdf = reporte.archivoLocal
-                .endsWith(".pdf", ignoreCase = true)
-
-            if (esPdf) {
-
-                TextoSecundario("PDF guardado en el celular")
-
-            } else {
-
-                val imagen = cargarImagenLocal(
-                    reporte.archivoLocal
-                )
-
-                if (imagen != null) {
-
-                    Image(
-                        bitmap = imagen.asImageBitmap(),
-                        contentDescription = "Imagen del reporte",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(220.dp),
-                        contentScale = ContentScale.Fit
+            rutasAdjuntos.forEachIndexed { idx, ruta ->
+                val esPdf = ruta.endsWith(".pdf", ignoreCase = true)
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .background(Color(0xFF102B23), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(if (esPdf) "📄" else "🖼️", fontSize = 20.sp)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        if (esPdf) "PDF ${idx + 1}" else "Imagen ${idx + 1}",
+                        color = Hueso, fontSize = 13.sp, modifier = Modifier.weight(1f)
                     )
-
-                } else {
-
-                    TextoSecundario("No se pudo mostrar la imagen")
                 }
+                if (!esPdf) {
+                    val imagen = cargarImagenLocal(ruta)
+                    if (imagen != null) {
+                        Spacer(Modifier.height(8.dp))
+                        Image(
+                            bitmap = imagen.asImageBitmap(),
+                            contentDescription = "Imagen del reporte",
+                            modifier = Modifier.fillMaxWidth().height(180.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
             }
 
             Spacer(Modifier.height(25.dp))
@@ -1619,9 +1655,10 @@ fun PantallaDetalleReporte(
                 ) {
                     Text("📎", fontSize = 18.sp)
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Adjunto", color = Acero, fontSize = 12.sp)
+                        val cntAdj = r.archivoLocal.split("|").count { it.isNotBlank() }
+                        Text("${cntAdj} adjunto${if (cntAdj != 1) "s" else ""}", color = Acero, fontSize = 12.sp)
                         Text(
-                            r.archivoLocal.substringAfterLast("/"),
+                            r.archivoLocal.substringAfterLast("/").substringBefore("|"),
                             color = Hueso,
                             fontSize = 13.sp,
                             maxLines = 2
@@ -1640,6 +1677,18 @@ fun PantallaDetalleReporte(
 
         BotonVolver(alVolver)
     }
+}
+
+// TAMAÑO DE ARCHIVO EN MB
+private fun obtenerTamanoMb(contexto: Context, uri: Uri): Int {
+    return try {
+        val cursor = contexto.contentResolver.query(uri, null, null, null, null)
+        cursor?.use {
+            val idx = it.getColumnIndex(android.provider.OpenableColumns.SIZE)
+            if (idx >= 0 && it.moveToFirst()) (it.getLong(idx) / (1024 * 1024)).toInt()
+            else 0
+        } ?: 0
+    } catch (e: Exception) { 0 }
 }
 
 // CARGAR IMAGEN GUARDADA
