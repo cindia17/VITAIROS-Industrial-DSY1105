@@ -619,14 +619,13 @@ fun PantallaNuevoReporte(
     var adjuntosUri by rememberSaveable { mutableStateOf("") }
     // adjuntosBitmaps: fotos tomadas con cámara (no saveable, se pierden al rotar)
     val adjuntosBitmaps = remember { mutableStateListOf<Bitmap>() }
-    val adjuntosUriList: List<Pair<String, String>>
-        get() = if (adjuntosUri.isBlank()) emptyList()
-                else adjuntosUri.split("|").map {
-                    val p = it.split("::", limit = 2)
-                    Pair(p[0], if (p.size > 1) p[1] else "Archivo")
-                }
-    val totalAdjuntos get() = adjuntosBitmaps.size + adjuntosUriList.size
-    val puedaAgregar get() = totalAdjuntos < 5
+    val adjuntosUriList = if (adjuntosUri.isBlank()) emptyList<Pair<String, String>>()
+                         else adjuntosUri.split("|").map {
+                             val p = it.split("::", limit = 2)
+                             Pair(p[0], if (p.size > 1) p[1] else "Archivo")
+                         }
+    val totalAdjuntos = adjuntosBitmaps.size + adjuntosUriList.size
+    val puedaAgregar = totalAdjuntos < 5
     var mensaje by rememberSaveable { mutableStateOf("") }
     var guardando by remember { mutableStateOf(false) }
 
