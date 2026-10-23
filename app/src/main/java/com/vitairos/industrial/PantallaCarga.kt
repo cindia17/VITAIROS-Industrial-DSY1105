@@ -36,7 +36,7 @@ fun PantallaCarga(alTerminar: () -> Unit) {
     }
 
     val animacion = rememberInfiniteTransition(
-        label = "Pikachu"
+        label = "Logo"
     )
 
     val salto by animacion.animateFloat(
@@ -76,9 +76,9 @@ fun PantallaCarga(alTerminar: () -> Unit) {
 
             Image(
                 painter = painterResource(
-                    id = R.drawable.pikachu_corriendo
+                    id = R.drawable.logo_vitairos
                 ),
-                contentDescription = "Pikachu corriendo",
+                contentDescription = "Logo VITAIROS",
                 modifier = Modifier
                     .offset(
                         x = recorrido * progreso,
