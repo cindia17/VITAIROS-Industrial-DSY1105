@@ -318,7 +318,7 @@ fun PantallaAcceso(
         mutableStateOf("")
     }
 
-    var contrasena by rememberSaveable(tipoUsuario) {
+    var contrasena by remember(tipoUsuario) {
         mutableStateOf("")
     }
 
