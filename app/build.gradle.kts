@@ -75,6 +75,8 @@ dependencies {
     // PRUEBAS
 
     testImplementation(libs.junit)
+    testImplementation(libs.kotest.runner.junit4)
+    testImplementation(libs.kotest.assertions)
 
     androidTestImplementation(
         platform(libs.androidx.compose.bom)
