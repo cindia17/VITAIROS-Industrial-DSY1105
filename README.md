@@ -90,3 +90,14 @@ com.vitairos.industrial/
 | Oro | `#D9B46C` | Acento / En cola |
 | Hueso | `#FBF7F1` | Texto principal |
 | Acero | `#AAB6B7` | Texto secundario |
+
+## Entrega (EFT)
+
+- **APK firmado (release):** [`entrega/VITAIROS_Industrial_v1.3_release.apk`](entrega/VITAIROS_Industrial_v1.3_release.apk) — versión 1.3, firma APK Signature Scheme v2, probado en Moto G56 5G.
+- **Informe técnico:** [`entrega/Informe_DSY1105_VITAIROS_v2.docx`](entrega/Informe_DSY1105_VITAIROS_v2.docx)
+- **Pruebas unitarias:** 10 pruebas Kotest 5.9.1 en `app/src/test/java/com/vitairos/industrial/ReporteTest.kt`
+
+```
+.\gradlew :app:testDebugUnitTest --no-configuration-cache   # pruebas unitarias
+.\gradlew :app:assembleRelease --no-configuration-cache     # APK release firmado
+```
