@@ -48,7 +48,9 @@ android {
                 signingConfig = signingConfigs.getByName("release")
             }
             optimization {
-                enable = true
+                // R8 rompía clases de Kotlin en el APK release
+                // (IllegalAccessError en kotlin.collections al iniciar)
+                enable = false
                 packageScope = setOf(
                     "androidx.**",
                     "kotlin.**",
